@@ -1,0 +1,4 @@
+FROM gcr.io/google_appengine/golang
+EXPOSE 8081
+COPY bin/RegistrationService .
+CMD ./RegistrationService
