@@ -2,7 +2,6 @@ package main
 
 import(
 	"log"
-	"math/rand"
 	"cloud.google.com/go/pubsub"
 	"golang.org/x/net/context"
 	"time"
@@ -45,6 +44,7 @@ func Subscribe(ctx context.Context) *pubsub.Subscription {
 	if !ex {
 		log.Fatalf("Topic does not exist on the server %v \n", topicName)
 	}
+	log.Printf("DEBUG: Topic %v \n", topic.ID())
 
 	// create subscription with retry
 	var sub *pubsub.Subscription;
@@ -87,6 +87,7 @@ func UnSubscribe(ctx context.Context, sub *pubsub.Subscription) {
 func StartEventReceiver(ctx context.Context, subscription *pubsub.Subscription, model *QueryModel) {
 	go func() {
 		for { // forever
+			log.Printf("DEBUG: loop iteration:")
 			time.Sleep(interBatchDelayMs * time.Millisecond)
 			ReadEventBatch(ctx, subscription, model)
 		}
@@ -104,13 +105,13 @@ func ReadEventBatch(ctx context.Context, subscription *pubsub.Subscription, mode
 	for i := 0; i < eventBatchSize; i++ {
 		msg, err := it.Next()
 		if err == iterator.Done {
-			log.Printf("DEBUG: event iterator.Done \n") // TODO: remove
+			log.Printf("DEBUG: event iterator.Done \n")
 			return
 		}
 		if (err != nil) {
 			log.Printf("Error reading message from iterator: %v \n", err)
 		}
-		ack := model.handle(msg)
+		ack := model.Handle(msg)
 		msg.Done(ack)
 	}
 }
@@ -121,38 +122,18 @@ func GenerateSubscriptionName() string {
 		log.Printf("Error obtaining hostname %v \n", err)
 		hostname = "localhost"
 	}
-	name := "query-service-" + hostname + "-" + RandomStringBytes(8)
+	name := "query-service-" + hostname + "-" + RandomStringBytes(12)
 	log.Printf("DEBUG: subcription name = " + name)
 	return name;
 }
 
 func RandomStringBytes(n int) string {
 	b := make([]byte, n)
+	ts := time.Now().UnixNano()
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+		index := ts % int64(len(letterBytes))
+		ts = ts / int64(len(letterBytes))
+		b[n-i-1] = letterBytes[index]
 	}
 	return string(b)
 }
-
-//func IpString() string {
-//	ipstring := ""
-//	ifaces, err := net.Interfaces()
-//	if (err != nil) {
-//		return "-iferror"
-//	}
-//	for _, i := range ifaces {
-//		addrs, err := i.Addrs()
-//		if (err != nil) {
-//			return "-iperror"
-//		}
-//		for _, addr := range addrs {
-//			switch v := addr.(type) {
-//				case *net.IPNet:
-//					ipstring += ("-" + v.IP.String())
-//				case *net.IPAddr:
-//					ipstring += ("-" + v.IP.String())
-//			}
-//		}
-//	}
-//	return ipstring
-//}
