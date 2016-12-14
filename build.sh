@@ -48,7 +48,14 @@ bash build/deploy_booking_service.sh
 
 echo ''
 echo '*******************************************'
+echo '*         Waiting for service IPs         *'
+echo '*******************************************'
+echo ''
+sleep 1m
+bash build/get_service_ips.sh
+
+echo ''
+echo '*******************************************'
 echo '*          Successfully deployed          *'
 echo '*******************************************'
 echo ''
-bash build/get_service_ips.sh
