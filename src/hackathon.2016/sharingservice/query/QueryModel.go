@@ -8,6 +8,7 @@ import (
 	"github.com/wangjia184/sortedset"
 	"sync"
 	"time"
+	"strings"
 )
 
 type ItemAvailability struct {
@@ -115,12 +116,14 @@ func (this *QueryModel) Query(city string, category string, from, to int64, exac
 	this.Lock.RLock()
 	defer this.Lock.RUnlock()
 
+	theCity := strings.TrimSpace(strings.ToLower(city))
+	theCategory := strings.TrimSpace(strings.ToLower(category))
 	array := make([]*ItemAvailability, take)
 
 	var itemSet *sortedset.SortedSet = nil
-	itemsByCat := this.CityCategoryItems[city]
+	itemsByCat := this.CityCategoryItems[theCity]
 	if itemsByCat != nil {
-		itemSet = itemsByCat[category]
+		itemSet = itemsByCat[theCategory]
 	}
 	if itemSet == nil {
 		itemSet = sortedset.New()
@@ -128,7 +131,8 @@ func (this *QueryModel) Query(city string, category string, from, to int64, exac
 
 	now := getNow()
 	if to < now {
-		return array;
+		log.Printf("DEBUG: query - taken = 0 as querying the past\n")
+		return array[:0];
 	}
 
 	nodes := itemSet.GetByRankRange(1, -1, false)
@@ -154,7 +158,8 @@ func (this *QueryModel) Query(city string, category string, from, to int64, exac
 		}
 	}
 
-	return array
+	log.Printf("DEBUG: query - taken = %v \n", taken)
+	return array[:taken]
 }
 
 func (this *QueryModel) cleanupOldDeferredBookings() {
@@ -196,11 +201,11 @@ func (this *QueryModel) removeOutdatedItemsInSet(set *sortedset.SortedSet, older
 }
 
 func getCity(item *common.ItemRegistration) string {
-	return item.Where.From
+	return strings.TrimSpace(strings.ToLower(item.Where.From))
 }
 
 func getCategory(item *common.ItemRegistration) string {
-	return item.What.Category
+	return strings.TrimSpace(strings.ToLower(item.What.Category))
 }
 
 func getItemKey(timestamp, hash string) string {

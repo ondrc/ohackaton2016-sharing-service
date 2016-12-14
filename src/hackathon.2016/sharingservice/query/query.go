@@ -34,5 +34,5 @@ func main() {
 	StartEventReceiver(ctx, sub, model)
 
 	// start query server
-	startServerAndBlock(model)
+	StartServerAndBlock(model)
 }
