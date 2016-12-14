@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 	"strings"
+	"fmt"
 )
 
 type ItemAvailability struct {
@@ -43,10 +44,10 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 
 	eventType := evt.Attributes[common.EVENT_TYPE_ATTRIBUTE_NAME]
 	timestamp := evt.Attributes[common.TIMESTAMP_ATTRIBUTE_NAME]
-	hash := evt.Attributes[common.HASH_ATTRIBUTE_NAME]
 
 
 	if (eventType == common.REGISTRATION_EVENT_TYPE) {
+		hash := evt.Attributes[common.HASH_ATTRIBUTE_NAME]
 		item := common.ItemRegistration{}
 		err := json.Unmarshal(evt.Data, &item)
 		if err != nil {
@@ -56,7 +57,13 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 		}
 
 	} else if (eventType == common.BOOKING_EVENT_TYPE) {
-		this.handleBooking(timestamp, hash)
+		item := common.BookingInfo{}
+		err := json.Unmarshal(evt.Data, &item)
+		if err != nil {
+			log.Printf("ERROR: failed to unmarshal booking message data. Error: %v \nMessage: %v \n", err, evt)
+		} else {
+			this.handleBooking(&item, timestamp)
+		}
 	}
 
 	return true
@@ -120,20 +127,21 @@ func (this *QueryModel) handleRegistration(item *common.ItemRegistration, timest
 	this.debugPrint()
 }
 
-func (this *QueryModel) handleBooking(timestamp, hash string) {
+func (this *QueryModel) handleBooking(item *common.BookingInfo, timestamp string) {
 	this.Lock.Lock()
 	defer this.Lock.Unlock()
 
-	log.Printf("DEBUG: handle booking event: (%v, %v)")
+	iTs := fmt.Sprintf("%d", item.Timestamp)
+	log.Printf("DEBUG: handle booking event: (%v, %v)", iTs, item.Hash)
 
-	key := getItemKey(timestamp, hash)
-	item, present := this.ItemsByKey[key]
+	key := getItemKey(iTs, item.Hash)
+	rItem, present := this.ItemsByKey[key]
 	if !present {
 		log.Printf("DEBUG: booking deferred - no such item yet (%v, %v)")
 		this.DeferredBookings[key] = true
 	} else {
-		item.Available = false
-		this.removeOutdatedItems(getCity(item.Item), getCategory(item.Item), getNow())
+		rItem.Available = false
+		this.removeOutdatedItems(getCity(rItem.Item), getCategory(rItem.Item), getNow())
 	}
 
 
