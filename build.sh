@@ -51,3 +51,4 @@ echo '*******************************************'
 echo '*          Successfully deployed          *'
 echo '*******************************************'
 echo ''
+bash build/get_service_ips.sh

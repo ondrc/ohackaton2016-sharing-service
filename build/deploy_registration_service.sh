@@ -15,6 +15,3 @@ gcloud container clusters get-credentials registration-service-cluster
 kubectl run registration-service --image=gcr.io/$PROJECT_ID/registration_service:v1 --port=8081
 
 kubectl expose deployment registration-service --type="LoadBalancer"
-
-sleep 1m
-kubectl get services registration-service

@@ -15,6 +15,3 @@ gcloud container clusters get-credentials booking-service-cluster
 kubectl run booking-service --image=gcr.io/$PROJECT_ID/booking_service:v1 --port=8083
 
 kubectl expose deployment booking-service --type="LoadBalancer"
-
-sleep 1m
-kubectl get services booking-service

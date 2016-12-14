@@ -15,6 +15,3 @@ gcloud container clusters get-credentials query-service-cluster
 kubectl run query-service --image=gcr.io/$PROJECT_ID/query_service:v1 --port=8080
 
 kubectl expose deployment query-service --type="LoadBalancer"
-
-sleep 1m
-kubectl get services query-service
