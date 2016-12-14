@@ -22,7 +22,7 @@ func main() {
 }
 
 func addItem(w http.ResponseWriter, r *http.Request) {
-	var item Item
+	var item common.ItemRegistration
 	err := json.NewDecoder(r.Body).Decode(&item)
 	if err != nil {
 		fmt.Errorf("Failed to parse request: %v", err)
@@ -30,7 +30,7 @@ func addItem(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(postItem(item)))
 }
 
-func postItem(item Item) string {
+func postItem(item common.ItemRegistration) string {
 	ctx := context.Background()
 
 	client, err := pubsub.NewClient(ctx, PROJECT_ID)
