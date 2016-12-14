@@ -1,3 +1,0 @@
-export GOPATH="`pwd`"
-export PROJECT_ID=august-ascent-152314
-

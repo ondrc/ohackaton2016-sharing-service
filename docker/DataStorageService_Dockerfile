@@ -1,0 +1,3 @@
+FROM gcr.io/google_appengine/golang
+COPY bin/DataStorageService .
+CMD ./DataStorageService

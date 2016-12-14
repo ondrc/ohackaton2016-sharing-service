@@ -8,7 +8,7 @@ gcloud docker -- push gcr.io/$PROJECT_ID/registration_service:v1
 
 gcloud config set compute/zone us-central1-c
 
-gcloud container clusters create registration-service-cluster --scopes cloud-platform
+gcloud container clusters create registration-service-cluster --scopes cloud-platform --num-nodes=2
 
 gcloud container clusters get-credentials registration-service-cluster
 
