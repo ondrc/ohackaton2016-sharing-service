@@ -16,7 +16,7 @@ func main() {
 
 	client, err := datastore.NewClient(ctx, common.PROJECT_ID)
 	if err != nil {
-		fmt.Errorf("Failed to create datastore client: %v", err)
+		fmt.Printf("Failed to create datastore client: %v", err)
 	}
 
 	common.StartEventReceiver(ctx, sub, func(msg *pubsub.Message) bool {
