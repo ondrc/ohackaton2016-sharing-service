@@ -18,7 +18,7 @@ func Subscribe(ctx context.Context) *pubsub.Subscription {
 	// create google cloud client
 	var err error;
 	var ex bool;
-	projectId := MustGetEnv("PROJECT_ID")
+	projectId := GetEnvOr("PROJECT_ID", PROJECT_ID)
 
 	// Creates a client
 	var client *pubsub.Client;
@@ -78,7 +78,7 @@ func SubscribeFixed(ctx context.Context, subName string) *pubsub.Subscription {
 	// create google cloud client
 	var err error;
 	var ex bool;
-	projectId := MustGetEnv("PROJECT_ID")
+	projectId := GetEnvOr("PROJECT_ID", PROJECT_ID)
 
 	// Creates a client
 	var client *pubsub.Client;
