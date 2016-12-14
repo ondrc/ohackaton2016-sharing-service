@@ -12,6 +12,8 @@ const BOOKING_EVENT_TYPE = "booking"
 
 const PROJECT_ID = "august-ascent-152314"
 const TOPIC_NAME = "events"
+const DATA_SUBSCRIPTION_NAME = "DataStorageServiceSubscription"
+const DATA_KIND = "StorageData"
 
 const REGISTRATION_LISTEN_ADDRESS = ":8081"
 const REGISTRATION_URI = "/add_item"
@@ -45,6 +47,11 @@ type BookingInfo struct {
 	Timestamp int64
 	Hash string
 	Email string
+}
+
+type StorageData struct {
+	Attributes map[string]string
+	Data string
 }
 
 func RandomStringBytes(n int) string {

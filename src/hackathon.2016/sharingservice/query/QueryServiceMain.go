@@ -6,6 +6,8 @@ import (
 	"syscall"
 	"log"
 	"golang.org/x/net/context"
+	"hackathon.2016/sharingservice/common"
+	"cloud.google.com/go/pubsub"
 )
 
 func main() {
@@ -13,7 +15,7 @@ func main() {
 	// background context
 	ctx := context.Background()
 	// subscribe to pub sub
-	sub := Subscribe(ctx)
+	sub := common.Subscribe(ctx)
 
 	// set up signal handlers to delete subscription on termination
 	log.Println("Installing signal handlers to unsubscribe on exit...")
@@ -22,7 +24,7 @@ func main() {
 	go func () {
 		for sig := range sigCh {
 			log.Println("Signal received: ", sig)
-			UnSubscribe(ctx, sub)
+			common.UnSubscribe(ctx, sub)
 			os.Exit(0)
 		}
 	}()
@@ -31,7 +33,9 @@ func main() {
 	// TODO: re-play old events to reconstruct state
 
 	// TODO: keep receiving messages to update state
-	StartEventReceiver(ctx, sub, model)
+	common.StartEventReceiver(ctx, sub, func (msg *pubsub.Message) bool {
+		return model.Handle(msg)
+	});
 
 	// start query server
 	StartServerAndBlock(model)

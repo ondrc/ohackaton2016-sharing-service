@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -38,11 +39,16 @@ func postInfo(bookingInfo common.BookingInfo) string {
 		fmt.Errorf("Failed to create topic: %v", err)
 	}
 
+	data, err := json.Marshal(bookingInfo)
+	if err != nil {
+		fmt.Errorf("Failed to marshal booking info: %v", err)
+	}
+
 	res, err := topic.Publish(ctx, &pubsub.Message{
+		Data:data,
 		Attributes: map[string]string{
-			common.TIMESTAMP_ATTRIBUTE_NAME:  string(bookingInfo.Timestamp),
-			common.HASH_ATTRIBUTE_NAME:       string(bookingInfo.Hash),
-			common.EMAIL_ATTRIBUTE_NAME:      string(bookingInfo.Email),
+			common.EVENT_TYPE_ATTRIBUTE_NAME: common.BOOKING_EVENT_TYPE,
+			common.TIMESTAMP_ATTRIBUTE_NAME:  fmt.Sprintf("%d", time.Now().UnixNano()),
 		},
 	})
 

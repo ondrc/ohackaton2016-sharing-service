@@ -90,6 +90,6 @@ func createHandlerFunction(model *QueryModel) func(http.ResponseWriter, *http.Re
 
 func StartServerAndBlock(model *QueryModel ) {
 	http.HandleFunc(common.QUERY_SERVICE_URI, createHandlerFunction(model))
-	res := http.ListenAndServe(":" + GetEnvOr("PORT", common.QUERY_SERVICE_LISTEN_ADDRESS), nil)
+	res := http.ListenAndServe(":" + common.GetEnvOr("PORT", common.QUERY_SERVICE_LISTEN_ADDRESS), nil)
 	log.Fatal(res)
 }
