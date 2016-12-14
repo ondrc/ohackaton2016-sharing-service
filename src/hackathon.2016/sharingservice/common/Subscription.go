@@ -139,9 +139,10 @@ func UnSubscribe(ctx context.Context, sub *pubsub.Subscription) {
 }
 
 func StartEventReceiver(ctx context.Context, subscription *pubsub.Subscription, action func (*pubsub.Message)  bool) {
+	log.Printf("DEBUG: starting pull thread\n")
 	go func() {
 		for { // forever
-			log.Printf("DEBUG: loop iteration:")
+			log.Printf("DEBUG: loop iteration:\n")
 			time.Sleep(interBatchDelayMs * time.Millisecond)
 			ReadEventBatch(ctx, subscription, action)
 		}
