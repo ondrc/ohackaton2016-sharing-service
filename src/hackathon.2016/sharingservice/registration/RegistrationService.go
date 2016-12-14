@@ -44,12 +44,13 @@ func postItem(item common.ItemRegistration) string {
 		fmt.Errorf("Failed to marshal JSON: %v", err)
 	}
 
+	randB := common.RandomStringBytes(16)
 	res, err := topic.Publish(ctx, &pubsub.Message{
 		Data: []byte(msg),
 		Attributes: map[string]string {
 			common.EVENT_TYPE_ATTRIBUTE_NAME:common.REGISTRATION_EVENT_TYPE,
-			common.TIMESTAMP_ATTRIBUTE_NAME:string(time.Now().Unix()),
-			common.HASH_ATTRIBUTE_NAME:string(time.Now().Unix()),
+			common.TIMESTAMP_ATTRIBUTE_NAME:fmt.Sprintf("%d", time.Now().UnixNano()),
+			common.HASH_ATTRIBUTE_NAME:randB,
 		},
 	})
 

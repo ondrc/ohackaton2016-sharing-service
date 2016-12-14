@@ -30,8 +30,7 @@ type ItemRegistration struct {
 			Description string `json:"Description"`
 		}
 	Where struct {
-			From string `json:"From"`
-			To string `json:"To"`
+			Location string `json:"Location"`
 		}
 	When struct {
 			From int64 `json:"From"`

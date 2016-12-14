@@ -27,7 +27,7 @@ func main() {
 		}
 	}()
 
-	model := new(QueryModel)
+	model := NewQueryModel()
 	// TODO: re-play old events to reconstruct state
 
 	// TODO: keep receiving messages to update state

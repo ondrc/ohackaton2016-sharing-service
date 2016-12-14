@@ -18,14 +18,24 @@ type ItemAvailability struct {
 	Timestamp string
 }
 
-type ItemsByCategory map[string] *sortedset.SortedSet // sorted set: key ~ see GetItemKey, score ~ When.To, value ~ *ItemAvailability
-type ItemsByCityAndCategory map[string] ItemsByCategory
+
+
 
 type QueryModel struct {
-	CityCategoryItems ItemsByCityAndCategory
+	CityCategoryItems map[string]map[string]*sortedset.SortedSet
 	ItemsByKey map[string]*ItemAvailability
 	DeferredBookings map[string]bool
 	Lock sync.RWMutex
+}
+
+func NewQueryModel() *QueryModel {
+	m := QueryModel{
+		CityCategoryItems: make(map[string]map[string]*sortedset.SortedSet),
+		ItemsByKey: make(map[string]*ItemAvailability),
+		DeferredBookings: make(map[string]bool),
+		Lock: sync.RWMutex{},
+	}
+	return &m;
 }
 
 // updates the model with given event and returns whether to ack the event
@@ -60,24 +70,34 @@ func (this *QueryModel) handleRegistration(item *common.ItemRegistration, timest
 	this.Lock.Lock()
 	defer this.Lock.Unlock()
 
-	log.Printf("DEBUG: handle registration: (%v, %v) category: %v, location %v, from %v, to %v \n",
-		timestamp, hash, item.What.Category, item.Where.From, item.When.From, item.When.To)
+	log.Printf("DEBUG: handle registration: (%v, %v) category: %v, location %v, from %v, to %v, by %v \n",
+		timestamp, hash, item.What.Category, item.Where.Location, item.When.From, item.When.To, item.Who.Email)
+	this.debugPrint()
+
 	city := getCity(item)
+	cat := getCategory(item)
+	log.Printf("DEBUG: city = %v\n", city);
+
 	category_items_map, present := this.CityCategoryItems[city]
 	if !present {
-		category_items_map = make(ItemsByCategory)
+		log.Printf("DEBUG: city %v not present - inserting\n", city);
+		category_items_map = make(map[string] *sortedset.SortedSet)
 		this.CityCategoryItems[city] = category_items_map
+		log.Printf("DEBUG: city %v not present - inserted\n", city);
 	}
-	cat := getCategory(item)
+	log.Printf("DEBUG: cat = %v\n", cat);
 	itemSet, present := category_items_map[cat]
 	if !present {
+		log.Printf("DEBUG: cat %v not present - inserting\n", cat);
 		itemSet = sortedset.New()
 		category_items_map[cat] = itemSet
+		log.Printf("DEBUG: cat %v not present - inserted\n", cat);
 	}
 
 	key := getItemKey(timestamp, hash)
 	node := itemSet.GetByKey(key)
 	if node == nil {
+		log.Printf("DEBUG: key %v not present - inserting\n", key);
 		itemAvail := ItemAvailability{ Item: item, Available: true, Hash: hash, Timestamp: timestamp }
 
 		if this.DeferredBookings[key] {
@@ -87,9 +107,17 @@ func (this *QueryModel) handleRegistration(item *common.ItemRegistration, timest
 
 		itemSet.AddOrUpdate(key, sortedset.SCORE(item.When.To), &itemAvail)
 		this.ItemsByKey[key] = &itemAvail
+	} else {
+		log.Printf("DEBUG: key %v present - ignoring\n", key);
 	}
 
+	log.Printf("DEBUG: before outdated cleanup:")
+	this.debugPrint()
+
 	this.removeOutdatedItemsInSet(itemSet, getNow())
+
+	log.Printf("DEBUG: after outdated cleanup:")
+	this.debugPrint()
 }
 
 func (this *QueryModel) handleBooking(timestamp, hash string) {
@@ -118,15 +146,15 @@ func (this *QueryModel) Query(city string, category string, from, to int64, exac
 
 	theCity := strings.TrimSpace(strings.ToLower(city))
 	theCategory := strings.TrimSpace(strings.ToLower(category))
+
 	array := make([]*ItemAvailability, take)
 
-	var itemSet *sortedset.SortedSet = nil
-	itemsByCat := this.CityCategoryItems[theCity]
-	if itemsByCat != nil {
-		itemSet = itemsByCat[theCategory]
-	}
+	itemSet := this.CityCategoryItems[theCity][theCategory]
 	if itemSet == nil {
+		log.Printf("DEBUG: nil set for q(%v, %v)\n", city, category)
 		itemSet = sortedset.New()
+	} else {
+		log.Printf("DEBUG: set not nil for q(%v, %v)\n", city, category)
 	}
 
 	now := getNow()
@@ -145,13 +173,23 @@ func (this *QueryModel) Query(city string, category string, from, to int64, exac
 			timeMatch :=  (exactTime && exactTimeMatch) || (!exactTime && inExactTimeMatch)
 			include := includeBooked || itemAvail.Available
 
+			log.Printf("DEBUG: visiting node (exactTimeMatch=%v, inexactTimeMath=%v, timeMatch=%v, include=%v)\n",
+				exactTimeMatch, inExactTimeMatch, timeMatch, include)
+
 			if timeMatch && include {
 				if (skip <= 0) {
 					if taken < take {
+						log.Printf("DEBUG: taking\n")
 						array[taken] = itemAvail
+
 						taken = taken + 1
+						if taken == take {
+							break;
+							log.Printf("DEBUG: taken all - breaking\n")
+						}
 					}
 				} else {
+					log.Printf("DEBUG: skipping");
 					skip = skip - 1
 				}
 			}
@@ -201,7 +239,7 @@ func (this *QueryModel) removeOutdatedItemsInSet(set *sortedset.SortedSet, older
 }
 
 func getCity(item *common.ItemRegistration) string {
-	return strings.TrimSpace(strings.ToLower(item.Where.From))
+	return strings.TrimSpace(strings.ToLower(item.Where.Location))
 }
 
 func getCategory(item *common.ItemRegistration) string {
@@ -220,4 +258,17 @@ func isDeferedBookingKeyExpired(key string, now int64) bool {
 	// TODO: decode timestamp and say if it is expired
 	//       i.e. way older than now
 	return false
+}
+
+func (this *QueryModel) debugPrint() {
+	log.Printf("DEBUG: ====\n")
+	defer log.Printf("DEBUG: ====\n")
+	log.Printf("DEBUG: printing QueryModel structure\n")
+	log.Printf("DEBUG: cities:\n")
+	for k, v := range this.CityCategoryItems {
+		log.Printf("DEBUG: --- %v\n", k)
+		for k2, v2 := range v {
+			log.Printf("DEBUG: ------ %v -> %v\n", k2, v2)
+		}
+	}
 }

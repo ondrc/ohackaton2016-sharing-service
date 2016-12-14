@@ -49,7 +49,7 @@ func createHandlerFunction(model *QueryModel) func(http.ResponseWriter, *http.Re
 					"%v , %v (timestamps - milliseconds since 1.1.1970)",
 					PARAM_CATEGORY, PARAM_LOCATION, PARAM_TIME_FROM, PARAM_TIME_TO),
 			}
-			v, e := json.Marshal(resp)
+			v, e := json.MarshalIndent(resp, "", "  ")
 			if e != nil {
 				log.Printf("Error marshalling response!\n")
 			} else {
@@ -65,9 +65,9 @@ func createHandlerFunction(model *QueryModel) func(http.ResponseWriter, *http.Re
 			w.WriteHeader(400)
 			resp := ErrorResponse{
 				Error: fmt.Sprintf("Invalid format of at least one of parameters: %v, %v", PARAM_TIME_FROM, PARAM_TIME_TO),
-				Hint: fmt.Sprintf("The parameters %v and %v are expected to be timestamps in UNIX format (miliseconds since 1.1.1970).", PARAM_TIME_FROM, PARAM_TIME_TO),
+				Hint: fmt.Sprintf("The parameters %v and %v are expected to be timestamps in UNIX format (seconds since 1.1.1970).", PARAM_TIME_FROM, PARAM_TIME_TO),
 			}
-			v, e := json.Marshal(resp)
+			v, e := json.MarshalIndent(resp, "", "  ")
 			if e != nil {
 				log.Printf("Error marshalling response!\n")
 			} else {
@@ -79,7 +79,7 @@ func createHandlerFunction(model *QueryModel) func(http.ResponseWriter, *http.Re
 		items:= model.Query(location, category, timeFrom, timeTo, false, false, 0, 200)
 
 		resp := Response{ Items: items }
-		v, e := json.Marshal(resp)
+		v, e := json.MarshalIndent(resp, "", "  ")
 		if e != nil {
 			log.Printf("Error marshalling response!\n")
 		}
