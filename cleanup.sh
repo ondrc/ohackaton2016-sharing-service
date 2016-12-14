@@ -9,13 +9,6 @@ echo ''
 
 echo ''
 echo '*******************************************'
-echo '*        Removing booking service         *'
-echo '*******************************************'
-echo ''
-bash build/cleanup_booking_service.sh
-
-echo ''
-echo '*******************************************'
 echo '*      Removing registration service      *'
 echo '*******************************************'
 echo ''

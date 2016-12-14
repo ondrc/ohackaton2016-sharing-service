@@ -12,7 +12,6 @@ echo '*******************************************'
 echo '*        Fetching code dependencies       *'
 echo '*******************************************'
 echo ''
-go get hackathon.2016/sharingservice/booking
 go get hackathon.2016/sharingservice/common
 go get hackathon.2016/sharingservice/datastore
 go get hackathon.2016/sharingservice/query
@@ -38,13 +37,6 @@ echo '*      Deploying registration service     *'
 echo '*******************************************'
 echo ''
 bash build/deploy_registration_service.sh
-
-echo ''
-echo '*******************************************'
-echo '*        Deploying booking service        *'
-echo '*******************************************'
-echo ''
-bash build/deploy_booking_service.sh
 
 echo ''
 echo '*******************************************'

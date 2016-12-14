@@ -1,4 +1,0 @@
-FROM gcr.io/google_appengine/golang
-EXPOSE 8083
-COPY bin/BookingService .
-CMD ./BookingService
