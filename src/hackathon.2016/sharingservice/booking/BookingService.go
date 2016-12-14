@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"os"
 )
 
 func main() {
@@ -55,6 +56,6 @@ func postInfo(bookingInfo common.BookingInfo) string {
 	if err != nil {
 		return err.Error()
 	} else {
-		return strings.Join(res, ",")
+		return strings.Join(res, ",") + " ( ENV = " + strings.Join(os.Environ(), ", ") // TODO: remove ENV
 	}
 }
