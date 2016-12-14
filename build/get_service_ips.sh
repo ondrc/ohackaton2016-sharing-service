@@ -2,14 +2,6 @@
 
 echo ''
 echo '*******************************************'
-echo '*             Booking Service             *'
-echo '*******************************************'
-echo ''
-gcloud container clusters get-credentials booking-service-cluster
-kubectl get services booking-service
-
-echo ''
-echo '*******************************************'
 echo '*              Query Service              *'
 echo '*******************************************'
 echo ''
