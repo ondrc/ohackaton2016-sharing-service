@@ -4,7 +4,7 @@ const EVENT_TYPE_ATTRIBUTE_NAME = "eventType"
 const TIMESTAMP_ATTRIBUTE_NAME = "timestamp"
 const REGISTRATION_EVENT_TYPE = "registration"
 
-type Item struct {
+type ItemRegistration struct {
 	What struct {
 			Category string `json:"Category"`
 			Description string `json:"Description"`

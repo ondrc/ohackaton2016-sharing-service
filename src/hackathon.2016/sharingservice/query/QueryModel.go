@@ -11,14 +11,21 @@ import (
 	"time"
 )
 
-type ItemsByCategory map[string] *sortedset.SortedSet
+type ItemAvailability struct {
+	Item *common.ItemRegistration
+	Available bool
+}
+
+type ItemsByCategory map[string] *sortedset.SortedSet // sorted set: key ~ see GetItemKey, score ~ When.To, value ~ ItemAvailability
 type ItemsByCityAndCategory map[string] ItemsByCategory
 
 type QueryModel struct {
 	CityCategoryItems ItemsByCityAndCategory
-	DeferredBookings sortedset.SortedSet
+	DeferredBookings sortedset.SortedSet // key ~ see GetItemKey, score ~ timestamp, value ~ _
 	Lock sync.RWMutex
 }
+
+
 
 // updates the model with given event and returns whether to ack the event
 func (this *QueryModel) Handle(evt *pubsub.Message) bool {
@@ -28,12 +35,13 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 
 
 	if (eventType == common.REGISTRATION_EVENT_TYPE) {
-		item := common.Item{}
+		item := common.ItemRegistration{}
 		err := json.Unmarshal(evt.Data, &item)
 		if err != nil {
 			log.Printf("ERROR: failed to unmarshal registration message data. Error: %v \nMessage: %v \n", err, evt)
 		} else {
-			this.HandleRegistration(&item, timestamp)
+			hash := GetItemHash(&item) // TODO: this shall be part of the message
+			this.HandleRegistration(&item, hash, timestamp)
 		}
 
 	}
@@ -41,7 +49,11 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 	return true
 }
 
-func (this *QueryModel) HandleRegistration(item *common.Item, timestamp string) {
+// Handles registration event
+// - Adds available item into the query model structure
+// - Handles deferred bookings (registration & booking events observed out of order)
+// - Removes outdated items in the slot
+func (this *QueryModel) HandleRegistration(item *common.ItemRegistration, hash, timestamp string) {
 	this.Lock.Lock()
 	defer this.Lock.Unlock()
 
@@ -59,9 +71,18 @@ func (this *QueryModel) HandleRegistration(item *common.Item, timestamp string) 
 		category_items_map[cat] = itemSet
 	}
 
-	itemSet.AddOrUpdate(GetItemKey(item, timestamp), sortedset.SCORE(item.When.To), item)
+	key := GetItemKey(hash, timestamp)
+	node := itemSet.GetByKey(key)
+	if node == nil {
+		itemAvail := ItemAvailability{ Item: item, Available: true}
 
-	// TODO: handle deferred bookings
+		deferredBooking := this.DeferredBookings.Remove(key)
+		if deferredBooking != nil {
+			itemAvail.Available = false
+		}
+
+		itemSet.AddOrUpdate(key, sortedset.SCORE(item.When.To), itemAvail)
+	}
 
 	RemoveOutdatedItems(itemSet, time.Now().Unix())
 }
@@ -69,6 +90,8 @@ func (this *QueryModel) HandleRegistration(item *common.Item, timestamp string) 
 func (this *QueryModel) Query(city string, category string, from, to int64) {
 	this.Lock.RLock()
 	defer this.Lock.RUnlock()
+
+
 	// TODO
 }
 
@@ -76,7 +99,7 @@ func RemoveOutdatedItems(set *sortedset.SortedSet, olderThan int64) {
 	for {
 		node := set.PeekMin()
 		if node != nil {
-			toValue := int64(node.Value.(common.Item).When.To)
+			toValue := int64(node.Value.(common.ItemRegistration).When.To)
 			if toValue < olderThan {
 				set.PopMin()
 			} else {
@@ -88,15 +111,19 @@ func RemoveOutdatedItems(set *sortedset.SortedSet, olderThan int64) {
 	}
 }
 
-func GetCity(item *common.Item) string {
+func GetCity(item *common.ItemRegistration) string {
 	return item.Where.From
 }
 
-func GetCategory(item *common.Item) string {
+func GetCategory(item *common.ItemRegistration) string {
 	return item.What.Category
 }
 
-func GetItemKey(item *common.Item, timestamp string) string {
+func GetItemKey(id, timestamp string) string {
+	return timestamp + ":" + id
+}
+
+func GetItemHash(item *common.ItemRegistration) string {
 	jsonString := ""
 	jsonBytes, err := json.Marshal(item)
 	if err != nil {
@@ -106,5 +133,5 @@ func GetItemKey(item *common.Item, timestamp string) string {
 	if n > 0 {
 		jsonString = string(jsonBytes[:n])
 	}
-	return timestamp + ":" + jsonString
+	return jsonString
 }
