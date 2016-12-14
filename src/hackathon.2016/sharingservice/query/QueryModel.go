@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"github.com/wangjia184/sortedset"
 	"sync"
-	"bytes"
 	"time"
 )
 
 type ItemAvailability struct {
 	Item *common.ItemRegistration
 	Available bool
+	Hash string
+	Timestamp string
 }
 
 type ItemsByCategory map[string] *sortedset.SortedSet // sorted set: key ~ see GetItemKey, score ~ When.To, value ~ ItemAvailability
@@ -32,6 +33,7 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 
 	eventType := evt.Attributes[common.EVENT_TYPE_ATTRIBUTE_NAME]
 	timestamp := evt.Attributes[common.TIMESTAMP_ATTRIBUTE_NAME]
+	hash := evt.Attributes[common.HASH_ATTRIBUTE_NAME]
 
 
 	if (eventType == common.REGISTRATION_EVENT_TYPE) {
@@ -40,10 +42,11 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 		if err != nil {
 			log.Printf("ERROR: failed to unmarshal registration message data. Error: %v \nMessage: %v \n", err, evt)
 		} else {
-			hash := GetItemHash(&item) // TODO: this shall be part of the message
 			this.HandleRegistration(&item, hash, timestamp)
 		}
 
+	} else if (eventType == common.BOOKING_EVENT_TYPE) {
+		// TODO
 	}
 
 	return true
@@ -84,15 +87,31 @@ func (this *QueryModel) HandleRegistration(item *common.ItemRegistration, hash, 
 		itemSet.AddOrUpdate(key, sortedset.SCORE(item.When.To), itemAvail)
 	}
 
-	RemoveOutdatedItems(itemSet, time.Now().Unix())
+	RemoveOutdatedItems(itemSet, GetNow())
 }
 
-func (this *QueryModel) Query(city string, category string, from, to int64) {
+func (this *QueryModel) Query(city string, category string, from, to int64, take int) []ItemAvailability {
 	this.Lock.RLock()
 	defer this.Lock.RUnlock()
 
+	array := make([]ItemAvailability, take)
+	//now := GetNow()
+	var itemSet *sortedset.SortedSet = nil
+	itemsByCat := this.CityCategoryItems[city]
+	if itemsByCat != nil {
+		itemSet = itemsByCat[category]
+	}
+	if itemSet == nil {
+		itemSet = sortedset.New()
+	}
+
+	//for itemSet.
+
+
 
 	// TODO
+
+	return array
 }
 
 func RemoveOutdatedItems(set *sortedset.SortedSet, olderThan int64) {
@@ -123,15 +142,6 @@ func GetItemKey(id, timestamp string) string {
 	return timestamp + ":" + id
 }
 
-func GetItemHash(item *common.ItemRegistration) string {
-	jsonString := ""
-	jsonBytes, err := json.Marshal(item)
-	if err != nil {
-		log.Fatalf("Can not marshal item %v \n", item)
-	}
-	n := bytes.IndexByte(jsonBytes, 0)
-	if n > 0 {
-		jsonString = string(jsonBytes[:n])
-	}
-	return jsonString
+func GetNow() int64 {
+	return time.Now().Unix()
 }

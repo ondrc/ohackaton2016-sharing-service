@@ -4,8 +4,10 @@ import "time"
 
 const EVENT_TYPE_ATTRIBUTE_NAME = "eventType"
 const TIMESTAMP_ATTRIBUTE_NAME = "timestamp"
-const REGISTRATION_EVENT_TYPE = "registration"
 const HASH_ATTRIBUTE_NAME = "hash"
+
+const REGISTRATION_EVENT_TYPE = "registration"
+const BOOKING_EVENT_TYPE = "booking"
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -19,9 +21,12 @@ type ItemRegistration struct {
 			To string `json:"To"`
 		}
 	When struct {
-			From int32 `json:"From"`
-			To int32 `json:"To"`
+			From int64 `json:"From"`
+			To int64 `json:"To"`
 		}
+	Who struct {
+			Email string `json:"Email"`
+	}
 }
 
 func RandomStringBytes(n int) string {
