@@ -230,18 +230,25 @@ func (this *QueryModel) removeOutdatedItems(city, category string, olderThan int
 
 
 func (this *QueryModel) removeOutdatedItemsInSet(set *sortedset.SortedSet, olderThan int64) {
+	log.Printf("Cleaning outdated entries\n")
 	for {
 		node := set.PeekMin()
 		if node != nil {
-			toValue := node.Value.(common.ItemRegistration).When.To
+			log.Printf("Cleaning outdated entries - non-empty\n")
+			toValue := node.Value.(*ItemAvailability).Item.When.To
+			log.Printf("Cleaning outdated entries - to = %v", toValue)
 			if toValue < olderThan {
+				log.Printf("Cleaning outdated entries - deleting\n")
 				set.PopMin()
 				delete(this.ItemsByKey, node.Key())
+				log.Printf("Cleaning outdated entries - deleted\n")
 			} else {
-				break
+				log.Printf("Cleaning outdated entries - returning\n")
+				return
 			}
 		} else {
-			break
+			log.Printf("Cleaning outdated entries - returning\n")
+			return
 		}
 	}
 }
