@@ -2,6 +2,13 @@
 
 echo ''
 echo '*******************************************'
+echo '*      Setting environment variables      *'
+echo '*******************************************'
+echo ''
+. setenv.sh
+
+echo ''
+echo '*******************************************'
 echo '*        Removing booking service         *'
 echo '*******************************************'
 echo ''
