@@ -14,12 +14,16 @@ func main() {
 
 	sub := common.SubscribeFixed(ctx, common.DATA_SUBSCRIPTION_NAME)
 
+	fmt.Println("Creating new client")
 	client, err := datastore.NewClient(ctx, common.PROJECT_ID)
+	fmt.Println("Client creation returned")
 	if err != nil {
-		fmt.Printf("Failed to create datastore client: %v", err)
+		fmt.Printf("Failed to create datastore client: %v\n", err)
 	}
 
+	fmt.Println("Starting receiver")
 	common.StartEventReceiver(ctx, sub, func(msg *pubsub.Message) bool {
+		fmt.Printf("Action %v\n", msg)
 		return storeEvent(ctx, client, msg)
 	})
 }
