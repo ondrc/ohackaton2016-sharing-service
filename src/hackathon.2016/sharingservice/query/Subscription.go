@@ -7,10 +7,10 @@ import(
 	"time"
 	"google.golang.org/api/iterator"
 	"os"
+	"hackathon.2016/sharingservice/common"
 )
 
 const topicName = "events"
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const retryCount = 10
 const eventBatchSize = 10
 const interBatchDelayMs = 500
@@ -122,18 +122,7 @@ func GenerateSubscriptionName() string {
 		log.Printf("Error obtaining hostname %v \n", err)
 		hostname = "localhost"
 	}
-	name := "query-service-" + hostname + "-" + RandomStringBytes(12)
+	name := "query-service-" + hostname + "-" + common.RandomStringBytes(12)
 	log.Printf("DEBUG: subcription name = " + name)
 	return name;
-}
-
-func RandomStringBytes(n int) string {
-	b := make([]byte, n)
-	ts := time.Now().UnixNano()
-	for i := range b {
-		index := ts % int64(len(letterBytes))
-		ts = ts / int64(len(letterBytes))
-		b[n-i-1] = letterBytes[index]
-	}
-	return string(b)
 }

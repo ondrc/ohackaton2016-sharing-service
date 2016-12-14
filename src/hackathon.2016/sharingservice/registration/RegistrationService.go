@@ -9,30 +9,12 @@ import (
 	"encoding/json"
 	"time"
 	"strings"
+	"hackathon.2016/sharingservice/common"
 )
 
 const PROJECT_ID = "august-ascent-152314"
 const TOPIC_NAME = "events"
 const LISTEN_ADDRESS = ":8081"
-
-type Event struct {
-	Registration Item `json:"Registration"`
-}
-
-type Item struct {
-	What struct {
-		Category string `json:"Category"`
-		Description string `json:"Description"`
-     	}
-	Where struct {
-		From string `json:"From"`
-		To string `json:"To"`
-      	}
-	When struct {
-		From int32 `json:"From"`
-		To int32 `json:"To"`
-     	}
-}
 
 func main() {
 	http.HandleFunc("/add_item", addItem)
@@ -69,8 +51,9 @@ func postItem(item Item) string {
 	res, err := topic.Publish(ctx, &pubsub.Message{
 		Data: []byte(msg),
 		Attributes: map[string]string {
-			"eventType":"registration",
-			"timestamp":string(time.Now().Unix()),
+			common.EVENT_TYPE_ATTRIBUTE_NAME:common.REGISTRATION_EVENT_TYPE,
+			common.TIMESTAMP_ATTRIBUTE_NAME:string(time.Now().Unix()),
+			common.HASH_ATTRIBUTE_NAME:string(time.Now().Unix()),
 		},
 	})
 
