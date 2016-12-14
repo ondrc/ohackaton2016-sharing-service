@@ -59,7 +59,7 @@ func createHandlerFunction(model *QueryModel) func(http.ResponseWriter, *http.Re
 		}
 
 		timeFrom, err1 := strconv.ParseInt(timeFromString, 10, 64)
-		timeTo, err2 := strconv.ParseInt(timeFromString, 10, 64)
+		timeTo, err2 := strconv.ParseInt(timeToString, 10, 64)
 
 		if err1 != nil || err2 != nil {
 			w.WriteHeader(400)
