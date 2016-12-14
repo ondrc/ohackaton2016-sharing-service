@@ -45,7 +45,7 @@ Not implemented parts:
    - the service is only available as set of externally available web services
        - curl
 
-Testing commands in curl:
+Testing curl commands:
 -------------------------
 
 TODO
