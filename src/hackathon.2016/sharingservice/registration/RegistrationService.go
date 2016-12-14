@@ -12,6 +12,9 @@ import (
 	"hackathon.2016/sharingservice/common"
 )
 
+//
+// handles /add_item and /book_item endpoints
+//
 func main() {
 	http.HandleFunc(common.REGISTRATION_URI, addItem)
 	http.HandleFunc(common.BOOKING_URI, bookItem)
@@ -22,7 +25,7 @@ func addItem(w http.ResponseWriter, r *http.Request) {
 	var item common.ItemRegistration
 	err := json.NewDecoder(r.Body).Decode(&item)
 	if err != nil {
-		fmt.Errorf("Failed to parse request: %v", err)
+		log.Printf("ERROR: Failed to parse request: %v", err)
 	}
 	w.Write([]byte(postItem(item)))
 }
@@ -32,17 +35,17 @@ func postItem(item common.ItemRegistration) string {
 
 	client, err := pubsub.NewClient(ctx, common.PROJECT_ID)
 	if err != nil {
-		fmt.Errorf("Failed to create client: %v", err)
+		log.Printf("ERROR: Failed to create client: %v", err)
 	}
 
 	topic, err := client.CreateTopic(ctx, common.TOPIC_NAME)
 	if err != nil {
-		fmt.Errorf("Failed to create topic: %v", err)
+		log.Printf("ERROR: Failed to create topic: %v", err)
 	}
 
 	msg, err := json.Marshal(item)
 	if err != nil {
-		fmt.Errorf("Failed to marshal JSON: %v", err)
+		log.Printf("ERROR: Failed to marshal JSON: %v", err)
 	}
 
 	randB := common.RandomStringBytes(16)
@@ -63,10 +66,11 @@ func postItem(item common.ItemRegistration) string {
 }
 
 func bookItem(w http.ResponseWriter, r *http.Request) {
-	var bookingInfo common.BookingInfo
+	bookingInfo := common.BookingInfo{}
 	err := json.NewDecoder(r.Body).Decode(&bookingInfo)
+	log.Printf("booking info: TS=%d, %v, %v\n", bookingInfo.Timestamp, bookingInfo.Hash, bookingInfo.Email)
 	if err != nil {
-		fmt.Errorf("Failed to parse request: %v", err)
+		log.Printf("ERROR: Failed to parse request: %v", err)
 	}
 	w.Write([]byte(postInfo(bookingInfo)))
 }
@@ -76,17 +80,17 @@ func postInfo(bookingInfo common.BookingInfo) string {
 
 	client, err := pubsub.NewClient(ctx, common.PROJECT_ID)
 	if err != nil {
-		fmt.Errorf("Failed to create client: %v", err)
+		log.Printf("ERROR: Failed to create client: %v", err)
 	}
 
 	topic, err := client.CreateTopic(ctx, common.TOPIC_NAME)
 	if err != nil {
-		fmt.Errorf("Failed to create topic: %v", err)
+		log.Printf("ERROR: Failed to create topic: %v", err)
 	}
 
 	data, err := json.Marshal(bookingInfo)
 	if err != nil {
-		fmt.Errorf("Failed to marshal booking info: %v", err)
+		log.Printf("ERROR: Failed to marshal booking info: %v", err)
 	}
 
 	res, err := topic.Publish(ctx, &pubsub.Message{

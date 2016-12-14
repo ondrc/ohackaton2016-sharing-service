@@ -21,7 +21,6 @@ const REGISTRATION_URI = "/add_item"
 const QUERY_SERVICE_LISTEN_ADDRESS = "8080"
 const QUERY_SERVICE_URI = "/query"
 
-const BOOKING_LISTEN_ADDRESS = ":8083"
 const BOOKING_URI = "/book_item"
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

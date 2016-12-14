@@ -10,6 +10,9 @@ import (
 	"cloud.google.com/go/pubsub"
 )
 
+//
+// handles /query endpoint
+//
 func main() {
 
 	// background context
