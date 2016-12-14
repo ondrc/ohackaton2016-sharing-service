@@ -12,13 +12,9 @@ import (
 	"hackathon.2016/sharingservice/common"
 )
 
-const PROJECT_ID = "august-ascent-152314"
-const TOPIC_NAME = "events"
-const LISTEN_ADDRESS = ":8081"
-
 func main() {
-	http.HandleFunc("/add_item", addItem)
-	log.Fatal(http.ListenAndServe(LISTEN_ADDRESS, nil))
+	http.HandleFunc(common.REGISTRATION_URI, addItem)
+	log.Fatal(http.ListenAndServe(common.REGISTRATION_LISTEN_ADDRESS, nil))
 }
 
 func addItem(w http.ResponseWriter, r *http.Request) {
@@ -33,12 +29,12 @@ func addItem(w http.ResponseWriter, r *http.Request) {
 func postItem(item common.ItemRegistration) string {
 	ctx := context.Background()
 
-	client, err := pubsub.NewClient(ctx, PROJECT_ID)
+	client, err := pubsub.NewClient(ctx, common.PROJECT_ID)
 	if err != nil {
 		fmt.Errorf("Failed to create client: %v", err)
 	}
 
-	topic, err := client.CreateTopic(ctx, TOPIC_NAME)
+	topic, err := client.CreateTopic(ctx, common.TOPIC_NAME)
 	if err != nil {
 		fmt.Errorf("Failed to create topic: %v", err)
 	}

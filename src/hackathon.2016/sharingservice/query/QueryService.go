@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"log"
+	"hackathon.2016/sharingservice/common"
 )
 
 type Response struct {
@@ -30,7 +31,7 @@ func createHandlerFunction(model *QueryModel) func(http.ResponseWriter, *http.Re
 }
 
 func startServerAndBlock(model *QueryModel ) {
-	http.HandleFunc("/query", createHandlerFunction(model))
-	res := http.ListenAndServe(":" + GetEnvOr("PORT", "8080"), nil)
+	http.HandleFunc(common.QUERY_SERVICE_URI, createHandlerFunction(model))
+	res := http.ListenAndServe(":" + GetEnvOr("PORT", common.QUERY_SERVICE_LISTEN_ADDRESS), nil)
 	log.Fatal(res)
 }

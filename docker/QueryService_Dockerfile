@@ -1,0 +1,4 @@
+FROM gcr.io/google_appengine/golang
+EXPOSE 8080
+COPY bin/query .
+CMD ./query
