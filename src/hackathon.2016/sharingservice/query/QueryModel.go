@@ -17,16 +17,15 @@ type ItemAvailability struct {
 	Timestamp string
 }
 
-type ItemsByCategory map[string] *sortedset.SortedSet // sorted set: key ~ see GetItemKey, score ~ When.To, value ~ ItemAvailability
+type ItemsByCategory map[string] *sortedset.SortedSet // sorted set: key ~ see GetItemKey, score ~ When.To, value ~ *ItemAvailability
 type ItemsByCityAndCategory map[string] ItemsByCategory
 
 type QueryModel struct {
 	CityCategoryItems ItemsByCityAndCategory
-	DeferredBookings sortedset.SortedSet // key ~ see GetItemKey, score ~ timestamp, value ~ _
+	ItemsByKey map[string]*ItemAvailability
+	DeferredBookings map[string]bool
 	Lock sync.RWMutex
 }
-
-
 
 // updates the model with given event and returns whether to ack the event
 func (this *QueryModel) Handle(evt *pubsub.Message) bool {
@@ -42,11 +41,11 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 		if err != nil {
 			log.Printf("ERROR: failed to unmarshal registration message data. Error: %v \nMessage: %v \n", err, evt)
 		} else {
-			this.HandleRegistration(&item, hash, timestamp)
+			this.handleRegistration(&item, timestamp, hash)
 		}
 
 	} else if (eventType == common.BOOKING_EVENT_TYPE) {
-		// TODO
+		this.handleBooking(timestamp, hash)
 	}
 
 	return true
@@ -56,46 +55,68 @@ func (this *QueryModel) Handle(evt *pubsub.Message) bool {
 // - Adds available item into the query model structure
 // - Handles deferred bookings (registration & booking events observed out of order)
 // - Removes outdated items in the slot
-func (this *QueryModel) HandleRegistration(item *common.ItemRegistration, hash, timestamp string) {
+func (this *QueryModel) handleRegistration(item *common.ItemRegistration, timestamp, hash string) {
 	this.Lock.Lock()
 	defer this.Lock.Unlock()
 
-	log.Printf("DEBUG: handle registration: category: %v, location %v, from %v, to %v \n", item.What.Category, item.Where.From, item.When.From, item.When.To)
-	city := GetCity(item)
+	log.Printf("DEBUG: handle registration: (%v, %v) category: %v, location %v, from %v, to %v \n",
+		timestamp, hash, item.What.Category, item.Where.From, item.When.From, item.When.To)
+	city := getCity(item)
 	category_items_map, present := this.CityCategoryItems[city]
 	if !present {
 		category_items_map = make(ItemsByCategory)
 		this.CityCategoryItems[city] = category_items_map
 	}
-	cat := GetCategory(item)
+	cat := getCategory(item)
 	itemSet, present := category_items_map[cat]
 	if !present {
 		itemSet = sortedset.New()
 		category_items_map[cat] = itemSet
 	}
 
-	key := GetItemKey(hash, timestamp)
+	key := getItemKey(timestamp, hash)
 	node := itemSet.GetByKey(key)
 	if node == nil {
-		itemAvail := ItemAvailability{ Item: item, Available: true}
+		itemAvail := ItemAvailability{ Item: item, Available: true, Hash: hash, Timestamp: timestamp }
 
-		deferredBooking := this.DeferredBookings.Remove(key)
-		if deferredBooking != nil {
+		if this.DeferredBookings[key] {
 			itemAvail.Available = false
 		}
+		delete(this.DeferredBookings, key)
 
-		itemSet.AddOrUpdate(key, sortedset.SCORE(item.When.To), itemAvail)
+		itemSet.AddOrUpdate(key, sortedset.SCORE(item.When.To), &itemAvail)
+		this.ItemsByKey[key] = &itemAvail
 	}
 
-	RemoveOutdatedItems(itemSet, GetNow())
+	this.removeOutdatedItemsInSet(itemSet, getNow())
 }
 
-func (this *QueryModel) Query(city string, category string, from, to int64, take int) []ItemAvailability {
+func (this *QueryModel) handleBooking(timestamp, hash string) {
+	this.Lock.Lock()
+	defer this.Lock.Unlock()
+
+	log.Printf("DEBUG: handle booking event: (%v, %v)")
+
+	key := getItemKey(timestamp, hash)
+	item, present := this.ItemsByKey[key]
+	if !present {
+		log.Printf("DEBUG: booking deferred - no such item yet (%v, %v)")
+		this.DeferredBookings[key] = true
+	} else {
+		item.Available = false
+		this.removeOutdatedItems(getCity(item.Item), getCategory(item.Item), getNow())
+	}
+
+
+
+}
+
+func (this *QueryModel) Query(city string, category string, from, to int64, exactTime, includeBooked bool, skip, take int) []*ItemAvailability {
 	this.Lock.RLock()
 	defer this.Lock.RUnlock()
 
-	array := make([]ItemAvailability, take)
-	//now := GetNow()
+	array := make([]*ItemAvailability, take)
+
 	var itemSet *sortedset.SortedSet = nil
 	itemsByCat := this.CityCategoryItems[city]
 	if itemsByCat != nil {
@@ -105,22 +126,66 @@ func (this *QueryModel) Query(city string, category string, from, to int64, take
 		itemSet = sortedset.New()
 	}
 
-	//for itemSet.
+	now := getNow()
+	if to < now {
+		return array;
+	}
 
+	nodes := itemSet.GetByRankRange(1, -1, false)
+	taken := 0
+	for _, n := range nodes {
+		if n != nil {
+			itemAvail := n.Value.(*ItemAvailability)
+			exactTimeMatch := itemAvail.Item.When.From == from && itemAvail.Item.When.To == to
+			inExactTimeMatch := itemAvail.Item.When.From <= from && itemAvail.Item.When.To >= to
+			timeMatch :=  (exactTime && exactTimeMatch) || (!exactTime && inExactTimeMatch)
+			include := includeBooked || itemAvail.Available
 
-
-	// TODO
+			if timeMatch && include {
+				if (skip <= 0) {
+					if taken < take {
+						array[taken] = itemAvail
+						taken = taken + 1
+					}
+				} else {
+					skip = skip - 1
+				}
+			}
+		}
+	}
 
 	return array
 }
 
-func RemoveOutdatedItems(set *sortedset.SortedSet, olderThan int64) {
+func (this *QueryModel) cleanupOldDeferredBookings() {
+	now := getNow()
+	for k := range this.DeferredBookings {
+		expired := isDeferedBookingKeyExpired(k, now)
+		if expired {
+			delete(this.DeferredBookings, k)
+		}
+	}
+}
+
+func (this *QueryModel) removeOutdatedItems(city, category string, olderThan int64) {
+	catMap, present := this.CityCategoryItems[city]
+	if present {
+		set, present := catMap[category]
+		if present {
+			this.removeOutdatedItemsInSet(set, olderThan)
+		}
+	}
+}
+
+
+func (this *QueryModel) removeOutdatedItemsInSet(set *sortedset.SortedSet, olderThan int64) {
 	for {
 		node := set.PeekMin()
 		if node != nil {
-			toValue := int64(node.Value.(common.ItemRegistration).When.To)
+			toValue := node.Value.(common.ItemRegistration).When.To
 			if toValue < olderThan {
 				set.PopMin()
+				delete(this.ItemsByKey, node.Key())
 			} else {
 				break
 			}
@@ -130,18 +195,24 @@ func RemoveOutdatedItems(set *sortedset.SortedSet, olderThan int64) {
 	}
 }
 
-func GetCity(item *common.ItemRegistration) string {
+func getCity(item *common.ItemRegistration) string {
 	return item.Where.From
 }
 
-func GetCategory(item *common.ItemRegistration) string {
+func getCategory(item *common.ItemRegistration) string {
 	return item.What.Category
 }
 
-func GetItemKey(id, timestamp string) string {
-	return timestamp + ":" + id
+func getItemKey(timestamp, hash string) string {
+	return timestamp + ":" + hash
 }
 
-func GetNow() int64 {
+func getNow() int64 {
 	return time.Now().Unix()
+}
+
+func isDeferedBookingKeyExpired(key string, now int64) bool {
+	// TODO: decode timestamp and say if it is expired
+	//       i.e. way older than now
+	return false
 }
