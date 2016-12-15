@@ -44,11 +44,128 @@ Not implemented parts:
      do so
    - the service is only available as set of externally available web services
        - curl
+- authentication
 
 Testing curl commands:
 -------------------------
 
-TODO
+There are three actions - add_item (offer / register item), book_item and query:
+
+### add_item
+
+    curl "http://104.198.173.92:8081/add_item" --data @add_item.json
+
+where add_item.json file contents is for example:
+
+    {
+      "What" : {
+        "Category" : "car",
+        "Description" : "Tesla Model S"
+      },
+      "When" : {
+        "From" : 1484035200,
+        "To" : 1484071200
+      },
+      "Where": {
+        "Location" : "Prague"
+      },
+      "Who": {
+        "Email" : "electron@example.org"
+      }
+    }
+
+This says to offer Tesla Model S since 8 AM to 6 PM
+on 10th January 2017 in Prague.
+
+The response is a number - the ID of meesage on PubSub (it is not important for the client).
+
+### query
+
+Then let's query:
+
+    curl "http://104.154.67.199:8080/query?category=car&location=prague&timeFrom=1484046000&timeTo=1484053200"
+
+We are looking for cars in Prague from 11 AM to 1 PM on 10th January 2017. The query returns json with items,
+for example:
+
+    {
+      "Items": [
+        {
+          "Item": {
+            "What": {
+              "Category": "car",
+              "Description": "Tesla Model S"
+            },
+            "Where": {
+              "Location": "Prague"
+            },
+            "When": {
+              "From": 1484035200,
+              "To": 1484071200
+            },
+            "Who": {
+              "Email": "electron@example.org"
+            }
+          },
+          "Available": true,
+          "Hash": "aaaaakncbMSFyZGX",
+          "Timestamp": "1481798551748919623"
+        }
+      ]
+    }
+
+Note that the Tesla Model S that we offered in the first curl is included although
+it is shared from 8 AM to 6 PM. The query shall return all the items that could satisfy
+requested time; even it they are shared for longer time.
+
+### booking
+
+Now let's book the item. The `Timestamp` and `Hash` parts of the query result
+are used to identify the item. Note that the values will change with each offer.
+The booking request will look like:
+
+    curl "http://104.198.173.92:8081/book_item" --data @book_item.json
+
+where book_item.json contents will be:
+
+    {
+      "Timestamp": 1481798551748919623,
+      "Hash": "aaaaakncbMSFyZGX",
+      "Email": "wannadrive@example.com"
+    }
+
+The response is for again a number indicating number of message - nothing useful for the client.
+
+We can now check that the item is no longer available; the same query:
+
+    curl "http://104.154.67.199:8080/query?category=car&location=prague&timeFrom=1484046000&timeTo=1484053200"
+
+shall now return empty array:
+
+    {
+      "Items": []
+    }
+
+Some timestamps may be useful when playing with this.
+
+| Date                     | Timestamp  |
+|--------------------------|------------|
+| Jan 10 08:00:00 UTC 2017 | 1484035200 |
+| Jan 10 09:00:00 UTC 2017 | 1484038800 |
+| Jan 10 10:00:00 UTC 2017 | 1484042400 |
+| Jan 10 11:00:00 UTC 2017 | 1484046000 |
+| Jan 10 12:00:00 UTC 2017 | 1484049600 |
+| Jan 10 13:00:00 UTC 2017 | 1484053200 |
+| Jan 10 14:00:00 UTC 2017 | 1484056800 |
+| Jan 10 15:00:00 UTC 2017 | 1484060400 |
+| Jan 10 16:00:00 UTC 2017 | 1484064000 |
+| Jan 10 17:00:00 UTC 2017 | 1484067600 |
+| Jan 10 18:00:00 UTC 2017 | 1484071200 |
+
+
+
+
+
 
 
 
