@@ -118,7 +118,7 @@ Note that the Tesla Model S that we offered in the first curl is included althou
 it is shared from 8 AM to 6 PM. The query shall return all the items that could satisfy
 requested time; even it they are shared for longer time.
 
-### booking
+### book_item
 
 Now let's book the item. The `Timestamp` and `Hash` parts of the query result
 are used to identify the item. Note that the values will change with each offer.
